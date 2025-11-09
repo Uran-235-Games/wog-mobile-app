@@ -1,0 +1,1 @@
+export const USER_SERVICE_HOST = "http://192.168.1.191:1487"
