@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { showToast } from "../components/Toast";
-import { ScreenProps } from "../types/screen";
 
 export type UserData = {
     auth: boolean,
@@ -33,10 +32,10 @@ export function useAccount() {
 
     const saveUser = async (data: UserData) => {
         try {
-        await AsyncStorage.setItem("userData", JSON.stringify(data));
-        setUser(data);
+            await AsyncStorage.setItem("userData", JSON.stringify(data));
+            setUser(data);
         } catch (err) {
-        console.error("Error saving user:", err);
+            console.error("Error saving user:", err);
         }
     };
 
@@ -47,3 +46,6 @@ export function useAccount() {
 
     return { user, loading, saveUser, logout };
 }
+
+type UseAccount = ReturnType<typeof useAccount>;
+export type SaveUserFn = UseAccount["saveUser"];

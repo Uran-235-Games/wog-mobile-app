@@ -1,5 +1,8 @@
 import { showToast } from "@/src/components/Toast";
-import { USER_SERVICE_HOST } from "@/src/config/constants";
+import { NGINX_HOST } from "@/src/config/constants";
+import { type SaveUserFn, UserData } from "@/src/hooks/account";
+import { useUserStore } from "@/src/hooks/useUserStore";
+import { ApiResponse } from "@/src/types/api";
 import { ScreenProps } from "@/src/types/screen";
 import React, { useState } from "react";
 import {
@@ -14,6 +17,8 @@ import {
 import { Button, Text, TextInput, ActivityIndicator } from "react-native-paper";
 
 export default function AuthScreen({ changeScreen }: ScreenProps) {
+    const saveUser = useUserStore(state => state.saveUser);
+
     const [isFetching, setIsFetching] = useState(false);
     const [authMode, setAuthMode] = useState<"signUp" | "signIn">("signUp");
 
@@ -29,21 +34,29 @@ export default function AuthScreen({ changeScreen }: ScreenProps) {
         try {
             const url =
                 authMode === "signUp"
-                    ? `${USER_SERVICE_HOST}/api/v1/auth/sign-up`
-                    : `${USER_SERVICE_HOST}/api/v1/auth/sign-in`;
+                    ? `${NGINX_HOST}/api/v1/auth/sign-up`
+                    : `${NGINX_HOST}/api/v1/auth/sign-in`;
 
             const res = await fetch(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name, email, password }),
             });
+            const data: ApiResponse = await res.json();
 
-            const data = await res.json();
-            setMessage(JSON.stringify(data));
-            if (authMode == "signUp") {
-                showToast("Ви успішно зареєструвались, теперь увійдіть до аккаунту");
+            if (!data.success || data.errors.length > 0) {
+                const msg = data.errors.map(e => `${e.code}: ${e.message}`).join("\n");
+                showToast(msg);
+                setMessage(msg);
+                return;
+            }
+
+            const result = data.result;
+            if (authMode === "signUp") {
+                showToast("Ви успішно зареєструвались, тепер увійдіть до аккаунту");
             } else {
-                showToast("Ви війшли в аккаунт");
+                showToast("Ви увійшли в аккаунт");
+                saveUser(result);
                 changeScreen("Home");
             }
         } catch (err) {

@@ -1,99 +1,111 @@
 import React, { useEffect, useState } from 'react';
-import { 
-    View, 
-    StyleSheet, 
-    ScrollView, 
-    KeyboardAvoidingView, 
-    Platform, 
-    TouchableWithoutFeedback, 
-    Keyboard 
+import {
+    View,
+    StyleSheet,
+    ScrollView,
+    KeyboardAvoidingView,
+    Platform,
+    TouchableWithoutFeedback,
+    Keyboard
 } from 'react-native';
 import { ActivityIndicator, PaperProvider, Text } from 'react-native-paper';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
 import AuthScreen from './screens/AuthScreen';
 import HomeScreen from './screens/HomeScreen';
 import TabBar from './components/TabBar';
 import AccountScreen from './screens/AccountScreen';
 import GamesScreen from './screens/GamesScreen';
-import { useAccount } from './hooks/account';
-import Toast, { showToast } from './components/Toast';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import Toast from './components/Toast';
+import { useUserStore } from './hooks/useUserStore';
 
-const ScreenLayout = ({ children }: { children: React.ReactNode }) => {
-  return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.keyboardAvoidingView}
+
+const ScreenLayout = ({ children }: { children: React.ReactNode }) => (
+  <KeyboardAvoidingView
+    behavior={Platform.OS === "ios" ? "padding" : "height"}
+    style={styles.keyboardAvoidingView}
+  >
+    <ScrollView
+      style={styles.scrollView}
+      contentContainerStyle={styles.scrollViewContent}
+      keyboardShouldPersistTaps="handled"
     >
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollViewContent}
-        keyboardShouldPersistTaps="handled" // Позволяет нажимать кнопки, когда клавиатура открыта
-      >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.touchableWrapper}>
-            {children}
-          </View>
-        </TouchableWithoutFeedback>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
-};
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.touchableWrapper}>{children}</View>
+      </TouchableWithoutFeedback>
+    </ScrollView>
+  </KeyboardAvoidingView>
+);
+
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<keyof typeof screens>("Auth");
+  const [currentScreen, setCurrentScreen] =
+    useState<keyof typeof screens>("Auth");
+
+  const user = useUserStore(state => state.user);
+  const loading = useUserStore(state => state.loading);
+  const logout = useUserStore(state => state.logout);
 
   const ChangeScreen = (screen: keyof typeof screens) => {
     setCurrentScreen(screen);
-  }
+  };
 
-  const { user, loading, logout } = useAccount();
-
+  // Автопереключение на экран Auth если юзер не авторизован
   useEffect(() => {
-    if (!user && !loading) {
-        ChangeScreen("Auth");
+    if (!loading && (!user || !user.auth)) {
+      ChangeScreen("Auth");
     }
-  }, [user, loading])
+  }, [loading]);
 
   const screens = {
-    "Home": <HomeScreen />,
-    "Auth": <AuthScreen changeScreen={ChangeScreen}/>,
-    "Account": <AccountScreen ChangeScreen={ChangeScreen} user={user?.user} onDelete={()=>{}} onLogout={logout}/>,
-    "Games": <GamesScreen />,
+    Home: <HomeScreen />,
+    Auth: <AuthScreen changeScreen={ChangeScreen} />,
+    Account: (
+      <AccountScreen
+        ChangeScreen={ChangeScreen}
+        user={user?.user}
+        onDelete={() => {}}
+        onLogout={logout}
+      />
+    ),
+    Games: <GamesScreen />,
   } as const;
+
 
   return (
     <SafeAreaProvider>
-    <PaperProvider>
-    <View style={styles.container}>
-      <StatusBar style="dark" />
+      <PaperProvider>
+        <View style={styles.container}>
+          <StatusBar style="dark" />
 
-      <View style={styles.header}>
-        <Text variant="bodyMedium">Header</Text>
-      </View>
-
-      <View style={styles.contentArea}>
-        {loading ? (
-          <View style={styles.loaderContainer}>
-            <ActivityIndicator animating={true}/>
-            <Text style={{ marginTop: 10 }}>Завантаження данних...</Text>
+          <View style={styles.header}>
+            <Text variant="bodyMedium">Header</Text>
           </View>
-        ) : (
-          <ScreenLayout>
-            {screens[currentScreen]}
-          </ScreenLayout>
-        )}
-      </View>
 
-      <Toast />
-      {/* {user && ( */}
-          <TabBar
+          <View style={styles.contentArea}>
+            {loading ? (
+              <View style={styles.loaderContainer}>
+                <ActivityIndicator animating={true} />
+                <Text style={{ marginTop: 10 }}>
+                  Завантаження данних...
+                </Text>
+              </View>
+            ) : (
+              <ScreenLayout>{screens[currentScreen]}</ScreenLayout>
+            )}
+          </View>
+
+          <Toast />
+
+          {user?.auth && (
+            <TabBar
               changeScreen={ChangeScreen}
               isDisable={false}
-          />
-      {/* )} */}
-    </View>
-    </PaperProvider>
+            />
+          )}
+        </View>
+      </PaperProvider>
     </SafeAreaProvider>
   );
 }
@@ -118,12 +130,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  keyboardAvoidingView: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
+  keyboardAvoidingView: { flex: 1 },
+  scrollView: { flex: 1 },
   scrollViewContent: {
     flexGrow: 1,
     justifyContent: 'center',
@@ -132,5 +140,5 @@ const styles = StyleSheet.create({
   touchableWrapper: {
     flex: 1,
     justifyContent: 'center',
-  }
+  },
 });
